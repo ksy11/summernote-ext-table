@@ -1,0 +1,165 @@
+@font-face {
+    font-family: "summernoteexttable";
+    font-style: normal;
+    font-weight: 400;
+    font-display: auto;
+    src: url(font/summernote-ext-table.eot);
+    src: url(font/summernote-ext-table.eot?#iefix) format("embedded-opentype"), url(font/summernote-ext-table.woff2) format("woff2"), url(font/summernote-ext-table.woff) format("woff"), url(font/summernote-ext-table.ttf) format("truetype")
+}
+
+.note-icon-table-merge:before {
+    font-family: summernoteexttable;
+    content: "\ea91"
+}
+
+.note-icon-table-cell-split:before {
+    font-family: summernoteexttable;
+    content: "\ea94"
+}
+
+.note-icon-table-margin:before {
+    font-family: summernoteexttable;
+    content: "\ea95"
+}
+
+.note-icon-table-width-height-reset:before {
+    content: "\ea28"
+}
+
+.jtable-cell-split-dropdown-toggle {
+    width: 20px;
+    padding-left: 5px;
+}
+
+.jtable-cell-split-dropdown {
+    width: 36px;
+    min-width: auto !important;
+}
+
+.jtable-cell-split-button-group {
+    margin: 0px !important;
+}
+
+.jtable-add-del-row-col-dropdown {
+    width: 145px;
+    min-width: auto !important;
+}
+
+.jtable-add-row-col-button-group {
+    margin: 0px !important;
+}
+
+.jtable-del-row-col-button-group {
+    margin: 3px 0px 0px 0px !important;
+}
+
+.jtable-align-dropdown {
+    width: 142px;
+    min-width: auto !important;
+}
+
+.jtable-horizontal-align-button-group {
+    margin: 0px !important;
+}
+
+.jtable-vertical-align-button-group {
+    margin: 3px 0px 0px 0px !important;
+}
+
+.jtable-vertical-align-btn-top {
+    padding-top: 1px;
+    padding-bottom: 9px;
+}
+
+.jtable-vertical-align-btn-middle {
+}
+
+.jtable-vertical-align-btn-bottom {
+    padding-top: 9px;
+    padding-bottom: 1px;
+}
+
+.jtable-vertical-align-btn-baseline {
+    padding-top: 1px;
+    padding-bottom: 9px;
+}
+
+.jtable-merge-label {
+    float: left;
+    padding-left: 0px;
+    width: 60px;
+}
+
+.jtable-merge-input {
+    width: 100px;
+    display: inline-block;
+}
+
+.jtable-merge-hint-span {
+    font-size: 13px;
+    padding-left: 5px;
+}
+
+.jtable-merge-row-info-div {
+    padding-top: 10px;
+}
+
+.jtable-merge-btn {
+    /*background: #5a5a5a;*/
+}
+
+.vl {
+    display: none;
+    position: absolute;
+    border-left: 3px dashed #bcbcbc;
+    cursor: col-resize;
+    z-index: 1;
+}
+
+.hl {
+    display: none;
+    position: absolute;
+    border-top: 3px dashed #bcbcbc;
+    cursor: row-resize;
+    z-index: 1;
+}
+
+
+
+.form-group-jtable-table-info-margin {
+    border: 1px dashed #888;
+    padding: 15px 0px;
+}
+
+.jtable-table-info-margin-top-bottom {
+    text-align: center;
+}
+
+.jtable-table-info-margin-input {
+    width: 40px;
+    margin-right: 3px;
+}
+
+.jtable-table-info-margin-middle {
+    display: flex;
+    text-align: center;
+    height: 109px;
+    margin: 15px 0 15px 0;
+}
+
+.jtable-table-info-margin-left {
+    width: 20%;
+    padding-top: 45px;
+}
+
+.jtable-table-info-margin-center {
+    width: 60%;
+    text-align: center;
+    padding-top: 30px;
+    border: 2px solid #000000;
+}
+
+.jtable-table-info-margin-right {
+    width: 20%;
+    padding-top: 45px;
+}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="kr">
+<head>
+    <meta charset="UTF-8">
+    <title>summernote-ext-table</title>
+
+    <link href="../script/summernote/summernote-lite.min.css" rel="stylesheet" type="text/css">
+    <link href="../script/summernote/plugin/table/summernote-ext-table.css" rel="stylesheet" type="text/css">
+
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js"></script>
+    <script src="../script/summernote/summernote-lite.min.js"></script>
+    <script src="../script/summernote/lang/summernote-ko-KR.min.js"></script>
+    <script src="../script/summernote/plugin/table/summernote-ext-table.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#summernote').summernote({
+                lang : "ko-KR",
+                height : 300,
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
+                    ['fontname', ['fontname', 'fontsize', 'color']],
+                    ['para', ['ul', 'ol', 'paragraph', 'height']],
+                    ['insert', ['hr', 'jTable', 'link', 'picture']],
+                    ['misc', ['undo', 'redo', 'fullscreen']],
+                ],
+                popover: {
+                    table: [
+                        ['merge', ['jMerge']],
+                        ['style', ['jBackcolor', 'jBorderColor', 'jAddDeleteRowCol']],
+                        ['info', ['jTableInfo']],
+                        ['delete', ['jWidthHeightReset', 'deleteTable']],
+                    ]
+                }
+            });
+        });
+    </script>
+
+</head>
+<body>
+
+<div id="summernote">
+</div>
+
+</body>
+</html>
