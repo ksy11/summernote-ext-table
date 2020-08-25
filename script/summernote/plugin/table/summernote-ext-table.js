@@ -42,6 +42,34 @@
             contenteditable: false
         };
 
+        var tableBlock = {
+            pressed          : false,
+            currentTableEl   : undefined,
+            currentTdEl      : undefined,
+            currentTdLeft    : undefined,
+            currentTdRight   : undefined,
+            currentTdTop     : undefined,
+            currentTdBottom  : undefined,
+            currentTdPosition: {
+                row: undefined,
+                col: undefined,
+            },
+            width            : undefined,
+            height           : undefined,
+            top              : undefined,
+            left             : undefined,
+            effect           : {
+                row: {
+                    start: undefined,
+                    end  : undefined,
+                },
+                col: {
+                    start: undefined,
+                    end  : undefined,
+                },
+            },
+        };
+
         var addRowCol = [
             ui.button({
                 className: 'btn-md',
@@ -527,15 +555,15 @@
         });
 
         self.jBorderColor = function (backColor) {
-            var rng = modules.editor.getLastRange.call(modules.editor);
-            if (rng.isCollapsed() && rng.isOnCell()) {
-                self.beforeCommand();
+            self.beforeCommand();
 
-                var cell = dom.ancestor(rng.commonAncestor(), dom.isCell);
-                $(cell).closest('table').find('td, th').css('border', '1px solid ' + backColor);
+            var cell = tableBlock.currentTdEl;
+            var $cell = $(cell);
+            $cell.closest('table').find('td, th').css('border', '1px solid ' + backColor);
 
-                self.afterCommand();
-            }
+            resetTableBlock($cell);
+
+            self.afterCommand();
         };
 
         context.memo('button.jBackcolor', function () {
@@ -543,15 +571,27 @@
         });
 
         self.color = function (backColor) {
-            var rng = modules.editor.getLastRange.call(modules.editor);
-            if (rng.isCollapsed() && rng.isOnCell()) {
-                self.beforeCommand();
+            self.beforeCommand();
 
-                var cell = dom.ancestor(rng.commonAncestor(), dom.isCell);
-                $(cell).css('background-color', backColor);
+            var cell = tableBlock.currentTdEl;
+            var $cell = $(cell);
+            var $table = $cell.closest('table');
 
-                self.afterCommand();
+            var vTable = new TableResultAction(cell, undefined, undefined, $table[0]);
+            var matrixTable = vTable.getMatrixTable();
+
+            var effectRow = tableBlock.effect.row;
+            var effectCol = tableBlock.effect.col;
+            for (var rowIndex = effectRow.start; rowIndex <= effectRow.end; rowIndex++) {
+                for (var colIndex = effectCol.start; colIndex <= effectCol.end; colIndex++) {
+                    var virtualTd = matrixTable[rowIndex][colIndex];
+                    $(virtualTd.baseCell).css('background-color', backColor);
+                }
             }
+
+            resetTableBlock($cell);
+
+            self.afterCommand();
         };
 
         self.colorPalette = function (className, tooltip, callbackFnc) {
@@ -682,27 +722,51 @@
         };
 
         self.setCellHorizontalAlign = function (position) {
-            var rng = modules.editor.getLastRange.call(modules.editor);
-            if (rng.isCollapsed() && rng.isOnCell()) {
-                self.beforeCommand();
+            self.beforeCommand();
 
-                var cell = dom.ancestor(rng.commonAncestor(), dom.isCell);
-                $(cell).css('text-align', position);
+            var cell = tableBlock.currentTdEl;
+            var $cell = $(cell);
+            var $table = $cell.closest('table');
 
-                self.afterCommand();
+            var vTable = new TableResultAction(cell, undefined, undefined, $table[0]);
+            var matrixTable = vTable.getMatrixTable();
+
+            var effectRow = tableBlock.effect.row;
+            var effectCol = tableBlock.effect.col;
+            for (var rowIndex = effectRow.start; rowIndex <= effectRow.end; rowIndex++) {
+                for (var colIndex = effectCol.start; colIndex <= effectCol.end; colIndex++) {
+                    var virtualTd = matrixTable[rowIndex][colIndex];
+                    $(virtualTd.baseCell).css('text-align', position);
+                }
             }
+
+            resetTableBlock($cell);
+
+            self.afterCommand();
         };
 
         self.setCellVerticalAlign = function (position) {
-            var rng = modules.editor.getLastRange.call(modules.editor);
-            if (rng.isCollapsed() && rng.isOnCell()) {
-                self.beforeCommand();
+            self.beforeCommand();
 
-                var cell = dom.ancestor(rng.commonAncestor(), dom.isCell);
-                $(cell).css('vertical-align', position);
+            var cell = tableBlock.currentTdEl;
+            var $cell = $(cell);
+            var $table = $cell.closest('table');
 
-                self.afterCommand();
+            var vTable = new TableResultAction(cell, undefined, undefined, $table[0]);
+            var matrixTable = vTable.getMatrixTable();
+
+            var effectRow = tableBlock.effect.row;
+            var effectCol = tableBlock.effect.col;
+            for (var rowIndex = effectRow.start; rowIndex <= effectRow.end; rowIndex++) {
+                for (var colIndex = effectCol.start; colIndex <= effectCol.end; colIndex++) {
+                    var virtualTd = matrixTable[rowIndex][colIndex];
+                    $(virtualTd.baseCell).css('vertical-align', position);
+                }
             }
+
+            resetTableBlock($cell);
+
+            self.afterCommand();
         };
 
         var horizontal = [
@@ -806,7 +870,7 @@
             '<span class="jtable-merge-hint-span">(min : <span class="jtable-merge-hint-row-min">1</span> / max : <span class="jtable-merge-hint-row-max">1</span>)</span>',
             '</div>',
         ].join('');
-        var mergeFooter = '<input type="button" href="#" class="btn btn-primary note-btn note-btn-primary jtable-merge-btn" value="'+lang.jTable.merge.merge+'" disabled>';
+        var mergeFooter = '<input type="button" href="#" class="btn btn-primary note-btn note-btn-primary jtable-merge-btn" value="' + lang.jTable.merge.merge + '" disabled>';
 
         $mergeDialog = ui.dialog({
             title : lang.jTable.merge.merge,
@@ -834,7 +898,7 @@
                         contents : ui.icon('note-icon-table-merge'),
                         tooltip  : lang.jTable.merge.merge,
                         container: options.container,
-                        click    : context.createInvokeHandler('jTable.mergeDialogShow'),
+                        click    : context.createInvokeHandler('jTable.cellMerge'),
                     }),
                     ui.button({
                         className: 'dropdown-toggle jtable-cell-split-dropdown-toggle',
@@ -873,84 +937,70 @@
             }).render();
         });
 
+        self.cellMerge = function () {
+            if(options.jTable.mergeMode == 'drag') {
+                self.dragCellMerge();
+            } else {
+                self.mergeDialogShow();
+            }
+        };
+
+        self.dragCellMerge = function () {
+            var cell = tableBlock.currentTdEl;
+            var $cell = $(cell);
+            var $table = $cell.closest('table');
+
+            var vTable = new TableResultAction(cell, undefined, undefined, $table[0]);
+            var matrixTable = vTable.getMatrixTable();
+
+            var effectRow = tableBlock.effect.row;
+            var effectCol = tableBlock.effect.col;
+
+            if(effectRow.start == effectRow.end && effectCol.start == effectCol.end){
+                resetTableBlock($cell);
+                return true;
+            }
+
+            for (var rowIndex = effectRow.start; rowIndex <= effectRow.end; rowIndex++) {
+                for (var colIndex = effectCol.start; colIndex <= effectCol.end; colIndex++) {
+                    var virtualTd = matrixTable[rowIndex][colIndex];
+                    cellUnMerge(virtualTd.baseCell);
+                }
+            }
+
+            var cellData = getMergeCellData(cell);
+
+            var data = {
+                trIndex : cellData.trIndex,
+                colIndex: cellData.colIndex,
+                current : {
+                    col: cellData.current.col,
+                    row: cellData.current.row,
+                },
+                merge   : {
+                    col: parseInt(effectCol.end - effectCol.start + 1, 10),
+                    row: parseInt(effectRow.end - effectRow.start + 1, 10),
+                },
+                effect  : {
+                    col: cellData.effect.col,
+                    row: cellData.effect.row,
+                },
+            };
+
+            var mergeCell = matrixTable[effectRow.start][effectCol.start];
+            tableCellMerge(mergeCell.baseCell, data);
+
+            resetTableBlock($cell);
+
+
+        };
+
         self.mergeDialogShow = function () {
             var rng = modules.editor.getLastRange.call(modules.editor);
             if (rng.isCollapsed() && rng.isOnCell()) {
 
                 var cell = dom.ancestor(rng.commonAncestor(), dom.isCell);
-                var $table = $(cell).closest('table');
-                var $tr = $(cell).closest('tr');
-                var trIndex = $tr[0].rowIndex;
-
-                var vTable = new TableResultAction(cell, undefined, undefined, $table[0]);
-                var matrixTable = vTable.getMatrixTable();
-
-                var tdList = matrixTable[trIndex];
-                var tdIndex = 0;
-                var countFlag = false;
-                var maxCol = 1;
-                var effectCol = [];
-
-                if (cell.rowSpan > 1) {
-                    maxCol = cell.colSpan;
-                } else {
-                    for (var colIndex = 0; colIndex < tdList.length; colIndex++) {
-                        var virtualTd = tdList[colIndex];
-                        if (countFlag) {
-                            effectCol.push(virtualTd.baseCell);
-                            maxCol++;
-                        }
-                        if (!countFlag && cell == virtualTd.baseCell) {
-                            tdIndex = colIndex;
-                            countFlag = true;
-                        } else if (countFlag && (virtualTd.baseCell.colSpan > 1 || virtualTd.baseCell.rowSpan > 1)) {
-                            maxCol--;
-                            effectCol.pop();
-                            countFlag = false;
-                        }
-                    }
-                }
-
-                countFlag = false;
-                var maxRow = 1;
-                var effectRow = [];
-
-                if (cell.colSpan > 1) {
-                    maxRow = cell.rowSpan;
-                } else {
-                    for (var rowIndex = 0; rowIndex < matrixTable.length; rowIndex++) {
-                        var virtualTd = matrixTable[rowIndex][tdIndex];
-                        if (countFlag) {
-                            effectRow.push(virtualTd.baseCell);
-                            maxRow++;
-                        }
-                        if (!countFlag && cell == virtualTd.baseCell) {
-                            countFlag = true;
-                        } else if (countFlag && (virtualTd.baseCell.colSpan > 1 || virtualTd.baseCell.rowSpan > 1)) {
-                            maxRow--;
-                            effectRow.pop();
-                            countFlag = false;
-                        }
-                    }
-                }
-
-                var cellData = {
-                    trIndex: trIndex,
-                    tdIndex: tdIndex,
-                    current: {
-                        col: cell.colSpan,
-                        row: cell.rowSpan,
-                    },
-                    max    : {
-                        col: maxCol,
-                        row: maxRow,
-                    },
-                    effect : {
-                        col: effectCol,
-                        row: effectRow,
-                    },
-                };
-
+                var cellData = getMergeCellData(cell);
                 modules.tablePopover.hide();
                 context.invoke('editor.saveRange');
                 showMergeDialog(cellData).then(function (data) {
@@ -959,26 +1009,7 @@
                     context.invoke('editor.restoreRange');
 
                     var cell = dom.ancestor(rng.commonAncestor(), dom.isCell);
-                    var $cell = $(cell);
-                    var colRemoveCount = data.merge.col - data.current.col;
-                    var rowRemoveCount = data.merge.row - data.current.row;
-
-                    $cell.prop("colspan", data.merge.col);
-
-                    for (var i = 0; i < colRemoveCount; i++) {
-                        $(data.effect.col[i]).remove();
-                    }
-
-                    $cell.prop("rowspan", data.merge.row);
-                    for (var i = 0; i < rowRemoveCount; i++) {
-                        var effectCell = data.effect.row[i];
-                        if (colRemoveCount > 0) {
-                            for (var j = 0; j < colRemoveCount; j++) {
-                                $(effectCell).next().remove();
-                            }
-                        }
-                        $(effectCell).remove();
-                    }
+                    tableCellMerge(cell, data);
 
                 }).fail(function () {
                     context.invoke('editor.restoreRange');
@@ -986,8 +1017,41 @@
             }
         };
 
+        function tableCellMerge(cell, data) {
+            var $cell = $(cell);
+            var colRemoveCount = data.merge.col - data.current.col;
+            var rowRemoveCount = data.merge.row - data.current.row;
+
+            $cell.prop("colspan", data.merge.col);
+
+            for (var i = 0; i < colRemoveCount; i++) {
+                $(data.effect.col[i]).remove();
+            }
+
+            $cell.prop("rowspan", data.merge.row);
+            for (var i = 0; i < rowRemoveCount; i++) {
+                var effectCell = data.effect.row[i];
+                if (colRemoveCount > 0) {
+                    for (var j = 0; j < colRemoveCount; j++) {
+                        $(effectCell).next().remove();
+                    }
+                }
+                $(effectCell).remove();
+            }
+
+            var $table = $cell.closest('table');
+            var $trList = $table.children('tr');
+            if(!$trList.length) $trList = $table.children('tbody').children('tr');
+            for(var i = 0; i < $trList.length; i++) {
+                var $tr = $($trList[i]);
+                var $cellList = $tr.find('td, th');
+                if(!$cellList.length)   $tr.remove();
+                console.log('aaaaaaaaa');
+            }
+        }
+
         function showMergeDialog(cellData) {
-            return $.Deferred(function(deferred) {
+            return $.Deferred(function (deferred) {
                 var $spanCountInput = $mergeDialog.find('.jtable-merge-input');
                 var $colInput = $mergeDialog.find('.jtable-merge-col-input');
                 var $colMinSapn = $mergeDialog.find('.jtable-merge-hint-col-min');
@@ -1068,66 +1132,146 @@
                 self.beforeCommand();
 
                 var cell = dom.ancestor(rng.commonAncestor(), dom.isCell);
-                var $cell = $(cell);
-
-                var $table = $cell.closest('table');
-                var $tr = $cell.closest('tr');
-                var currentColspan = parseInt(cell.colSpan, 10);
-                var currentRowspan = parseInt(cell.rowSpan, 10);
-                var insertColTdCount = currentColspan - 1;
-                var startTrIndex = $tr[0].rowIndex;
-                var endTrIndex = startTrIndex + currentRowspan - 1;
-
-                var vTable = new TableResultAction(cell, undefined, undefined, $table[0]);
-                var matrixTable = vTable.getMatrixTable();
-                var colCount = vTable.getColCount();
-
-                var insertFlag = false;
-                var targetCell = [];
-                for (var rowIndex = startTrIndex; rowIndex <= endTrIndex; rowIndex++) {
-                    var row = matrixTable[rowIndex];
-                    for (var colIndex = 0; colIndex < row.length; colIndex++) {
-                        if (insertFlag && cell != row[colIndex].baseCell && !row[colIndex].isVirtual) {
-                            targetCell.push(row[colIndex].baseCell);
-                            if (rowIndex == startTrIndex) {
-                                for (var i = 0; i < insertColTdCount; i++) {
-                                    $(row[colIndex].baseCell).before($('<td/>'))
-                                }
-                            } else {
-                                for (var i = 0; i < currentColspan; i++) {
-                                    $(row[colIndex].baseCell).before($('<td/>'))
-                                }
-                            }
-                            break;
-                        }
-                        if (cell == row[colIndex].baseCell) {
-                            insertFlag = true;
-                        }
-                        if (insertFlag && colIndex == row.length - 1) {
-                            var baseCell = row[colIndex].baseCell;
-                            // current Cell is last Cell
-                            if (rowIndex == startTrIndex) {
-                                for (var i = 0; i < insertColTdCount; i++) {
-                                    $(baseCell).after($('<td/>'))
-                                }
-                            } else {
-                                baseCell = $($table.find('tr')[rowIndex]).children().last();
-                                for (var i = 0; i < currentColspan; i++) {
-                                    $(baseCell).after($('<td/>'))
-                                }
-                            }
-                        }
-                    }
-                    insertFlag = false;
-                }
-
-                $cell.prop("colspan", 1);
-                $cell.prop("rowspan", 1);
-
+                cellUnMerge(cell);
 
                 self.afterCommand();
             }
         };
+
+        function cellUnMerge(cell){
+            var $cell = $(cell);
+
+            var $table = $cell.closest('table');
+            var $tr = $cell.closest('tr');
+            var currentColspan = parseInt(cell.colSpan, 10);
+            var currentRowspan = parseInt(cell.rowSpan, 10);
+            var insertColTdCount = currentColspan - 1;
+            var startTrIndex = $tr[0].rowIndex;
+            var endTrIndex = startTrIndex + currentRowspan - 1;
+
+            var vTable = new TableResultAction(cell, undefined, undefined, $table[0]);
+            var matrixTable = vTable.getMatrixTable();
+            var colCount = vTable.getColCount();
+
+            var insertFlag = false;
+            var targetCell = [];
+            for (var rowIndex = startTrIndex; rowIndex <= endTrIndex; rowIndex++) {
+                var row = matrixTable[rowIndex];
+                for (var colIndex = 0; colIndex < row.length; colIndex++) {
+                    if (insertFlag && cell != row[colIndex].baseCell && !row[colIndex].isVirtual) {
+                        targetCell.push(row[colIndex].baseCell);
+                        if (rowIndex == startTrIndex) {
+                            for (var i = 0; i < insertColTdCount; i++) {
+                                $(row[colIndex].baseCell).before($('<td/>'))
+                            }
+                        } else {
+                            for (var i = 0; i < currentColspan; i++) {
+                                $(row[colIndex].baseCell).before($('<td/>'))
+                            }
+                        }
+                        break;
+                    }
+                    if (cell == row[colIndex].baseCell) {
+                        insertFlag = true;
+                    }
+                    if (insertFlag && colIndex == row.length - 1) {
+                        var baseCell = row[colIndex].baseCell;
+                        // current Cell is last Cell
+                        if (rowIndex == startTrIndex) {
+                            for (var i = 0; i < insertColTdCount; i++) {
+                                $(baseCell).after($('<td/>'))
+                            }
+                        } else {
+                            var $trList = $table.children('tr');
+                            if(!$trList.length) $trList = $trList.children('tbody').children('tr');
+                            baseCell = $($trList[rowIndex]).children().last();
+                            for (var i = 0; i < currentColspan; i++) {
+                                $(baseCell).after($('<td/>'))
+                            }
+                        }
+                    }
+                }
+                insertFlag = false;
+            }
+
+            $cell.prop("colspan", 1);
+            $cell.prop("rowspan", 1);
+        }
+
+        function getMergeCellData(cell) {
+            var $table = $(cell).closest('table');
+            var $tr = $(cell).closest('tr');
+            var trIndex = $tr[0].rowIndex;
+
+            var vTable = new TableResultAction(cell, undefined, undefined, $table[0]);
+            var matrixTable = vTable.getMatrixTable();
+
+            var tdList = matrixTable[trIndex];
+            var tdIndex = 0;
+            var countFlag = false;
+            var maxCol = 1;
+            var effectCol = [];
+
+            if (cell.rowSpan > 1) {
+                maxCol = cell.colSpan;
+            } else {
+                for (var colIndex = 0; colIndex < tdList.length; colIndex++) {
+                    var virtualTd = tdList[colIndex];
+                    if (countFlag) {
+                        effectCol.push(virtualTd.baseCell);
+                        maxCol++;
+                    }
+                    if (!countFlag && cell == virtualTd.baseCell) {
+                        tdIndex = colIndex;
+                        countFlag = true;
+                    } else if (countFlag && (virtualTd.baseCell.colSpan > 1 || virtualTd.baseCell.rowSpan > 1)) {
+                        maxCol--;
+                        effectCol.pop();
+                        countFlag = false;
+                    }
+                }
+            }
+
+            countFlag = false;
+            var maxRow = 1;
+            var effectRow = [];
+
+            if (cell.colSpan > 1) {
+                maxRow = cell.rowSpan;
+            } else {
+                for (var rowIndex = 0; rowIndex < matrixTable.length; rowIndex++) {
+                    var virtualTd = matrixTable[rowIndex][tdIndex];
+                    if (countFlag) {
+                        effectRow.push(virtualTd.baseCell);
+                        maxRow++;
+                    }
+                    if (!countFlag && cell == virtualTd.baseCell) {
+                        countFlag = true;
+                    } else if (countFlag && (virtualTd.baseCell.colSpan > 1 || virtualTd.baseCell.rowSpan > 1)) {
+                        maxRow--;
+                        effectRow.pop();
+                        countFlag = false;
+                    }
+                }
+            }
+
+            return {
+                trIndex: trIndex,
+                tdIndex: tdIndex,
+                current: {
+                    col: cell.colSpan,
+                    row: cell.rowSpan,
+                },
+                max    : {
+                    col: maxCol,
+                    row: maxRow,
+                },
+                effect : {
+                    col: effectCol,
+                    row: effectRow,
+                },
+            };
+        }
 
 
         var tableInfoBody = [
@@ -1141,7 +1285,7 @@
             '<div class="jtable-table-info-margin-top-bottom"><input type="number" value="0" class="jtable-table-info-margin-input jtable-table-info-margin-input-bottom"><span>px</span></div>',
             '</div>',
         ].join('');
-        var tableInfoFooter = '<input type="button" href="#" class="btn btn-primary note-btn note-btn-primary jtable-apply-btn" value="'+lang.jTable.apply+'" >';
+        var tableInfoFooter = '<input type="button" href="#" class="btn btn-primary note-btn note-btn-primary jtable-apply-btn" value="' + lang.jTable.apply + '" >';
 
         $tableInfoDialog = ui.dialog({
             title : lang.table.table + ' ' + lang.jTable.info.margin,
@@ -1184,7 +1328,7 @@
         };
 
         function showTableInfoDialog($table) {
-            return $.Deferred(function(deferred) {
+            return $.Deferred(function (deferred) {
                 var $applyBtn = $tableInfoDialog.find('.jtable-apply-btn');
                 var $marginInput = $tableInfoDialog.find('.jtable-table-info-margin-input');
                 var $marginTopInput = $tableInfoDialog.find('.jtable-table-info-margin-input-top');
@@ -1291,7 +1435,121 @@
 
         self.events = {
             'summernote.init': function (_, layoutInfo) {
+                layoutInfo.editingArea.append('<div class="jtable-block"><div/>');
+
                 layoutInfo.editingArea.on('click', '.note-editable table', function (event) {
+                    var $target = $(event.target).closest('td');
+                    if (!$target.length) $target = $(event.target).closest('th');
+                    if ($target.length) modules.tablePopover.update($target[0]);
+                });
+                layoutInfo.editingArea.on('mousedown', 'td', function (event) {
+                    if (tableBlock.pressed) return true;
+                    var $this = $(this);
+                    resetTableBlock($this);
+
+                    if (tableResize.pressed) return true;
+
+                    var $table = $this.closest('table');
+                    var targetTop = $this.offset().top;
+                    var targetLeft = $this.offset().left;
+                    var targetWidth = $this.outerWidth();
+                    var targetHeight = $this.outerHeight();
+                    var targetRight = targetLeft + targetWidth;
+                    var targetBottom = targetTop + targetHeight;
+
+                    var cellPosition = getCellPosition(this, $table[0]);
+
+                    tableBlock = {
+                        pressed          : true,
+                        currentTableEl   : $table[0],
+                        currentTdEl      : this,
+                        currentTdLeft    : targetLeft,
+                        currentTdRight   : targetRight,
+                        currentTdTop     : targetTop,
+                        currentTdBottom  : targetBottom,
+                        currentTdPosition: {
+                            row: cellPosition.row,
+                            col: cellPosition.col,
+                        },
+                        width            : targetRight,
+                        height           : targetBottom,
+                        top              : targetTop,
+                        left             : targetLeft,
+                        effect           : {
+                            row: {
+                                start: cellPosition.row,
+                                end  : cellPosition.row,
+                            },
+                            col: {
+                                start: cellPosition.col,
+                                end  : cellPosition.col,
+                            },
+                        },
+                    };
+
+                    event.stopPropagation();
+                });
+                layoutInfo.editingArea.on('mousemove', '.note-editable', function (event) {
+                    if (!tableBlock.pressed) return true;
+                    modules.tablePopover.hide();
+
+                    var $this = $(event.target).closest('td');
+                    if (!$this.length) $this = $(event.target).closest('th');
+                    var $block = $this.closest('.note-editing-area').find('.jtable-block');
+                    if ($this.length) {
+                        var $table = $this.closest('table');
+                        var targetTop = $this.offset().top;
+                        var targetLeft = $this.offset().left;
+                        var targetWidth = $this.outerWidth();
+                        var targetHeight = $this.outerHeight();
+                        var targetRight = targetLeft + targetWidth;
+                        var targetBottom = targetTop + targetHeight;
+
+                        var cellPosition = getCellPosition($this[0], $table[0]);
+
+                        var colPos = tableBlock.effect.col;
+                        var rowPos = tableBlock.effect.row;
+
+                        if (tableBlock.currentTdLeft >= targetLeft) {
+                            tableBlock.left = targetLeft;
+                            tableBlock.width = tableBlock.currentTdRight - targetLeft;
+                            colPos.end = tableBlock.currentTdPosition.col;
+                            colPos.start = cellPosition.col;
+                        } else {
+                            tableBlock.width = targetRight - tableBlock.left;
+                            colPos.end = cellPosition.col;
+                        }
+
+                        if (tableBlock.currentTdTop >= targetTop) {
+                            tableBlock.top = targetTop;
+                            tableBlock.height = tableBlock.currentTdBottom - targetTop;
+                            rowPos.end = tableBlock.currentTdPosition.row;
+                            rowPos.start = cellPosition.row;
+                        } else {
+                            tableBlock.height = targetBottom - tableBlock.top;
+                            rowPos.end = cellPosition.row;
+                        }
+
+                        $block.show();
+                        $block.offset({
+                            left: tableBlock.left,
+                            top : tableBlock.top,
+                        });
+                        $block.css({
+                            width : tableBlock.width,
+                            height: tableBlock.height,
+                        });
+
+                    }
+                });
+                layoutInfo.editingArea.on('mousemove mousedown touchstart', '.note-editable', function (event) {
+                    if (!tableBlock.pressed) return true;
+                    event.preventDefault();
+                });
+                layoutInfo.editingArea.on('mouseup', '.note-editable', function (event) {
+                    if (!tableBlock.pressed) return true;
+                    tableBlock.pressed = false;
+
                     var $target = $(event.target).closest('td');
                     if (!$target.length) $target = $(event.target).closest('th');
                     if ($target.length) modules.tablePopover.update($target[0]);
@@ -1379,6 +1637,9 @@
                         startHeight    : $this.height(),
                         contenteditable: contenteditable
                     };
+
+                    resetTableBlock($this);
+
                     event.stopPropagation();
                 });
                 layoutInfo.editingArea.on('mousemove', '.note-editable', function (event) {
@@ -1474,6 +1735,57 @@
                 startHeight    : undefined,
                 contenteditable: false
             };
+        }
+
+        function resetTableBlock($this) {
+            tableBlock = {
+                pressed          : false,
+                currentTableEl   : undefined,
+                currentTdEl      : undefined,
+                currentTdLeft    : undefined,
+                currentTdRight   : undefined,
+                currentTdTop     : undefined,
+                currentTdBottom  : undefined,
+                currentTdPosition: {
+                    row: undefined,
+                    col: undefined,
+                },
+                width            : undefined,
+                height           : undefined,
+                top              : undefined,
+                left             : undefined,
+                effect           : {
+                    row: {
+                        start: undefined,
+                        end  : undefined,
+                    },
+                    col: {
+                        start: undefined,
+                        end  : undefined,
+                    },
+                },
+            };
+
+            var $block = $this.closest('.note-editing-area').find('.jtable-block');
+            $block.hide();
+        }
+
+        function getCellPosition(cellEl, tableEl) {
+            var vTable = new TableResultAction(cellEl, undefined, undefined, tableEl);
+            var matrixTable = vTable.getMatrixTable();
+            for (var rowIndex = 0; rowIndex < matrixTable.length; rowIndex++) {
+                var virtualTr = matrixTable[rowIndex];
+                for (var colIndex = 0; colIndex < virtualTr.length; colIndex++) {
+                    var virtualTd = matrixTable[rowIndex][colIndex];
+                    if (virtualTd.baseCell == cellEl) {
+                        return {
+                            row: rowIndex,
+                            col: colIndex,
+                        };
+                    }
+                }
+
+            }
         }
 
     };
@@ -1864,6 +2176,11 @@
 
 
     // Extends summernote
+    $.extend(true, $.summernote.options, {
+        jTable: {
+            mergeMode: 'drag',  // drag || dialog
+        },
+    });
     $.extend(true, $.summernote.lang, {
         'en-US': {
             jTable: {

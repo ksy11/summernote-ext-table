@@ -20,7 +20,7 @@ Summernote Toolbar. ('table' => 'jTable')
 Summernote popover-table.
 table: [
     ['merge', ['jMerge']],
-    ['style', ['jBackcolor', 'jBorderColor', 'jAddDeleteRowCol']],
+    ['style', ['jBackcolor', 'jBorderColor', 'jAlign', 'jAddDeleteRowCol']],
     ['info', ['jTableInfo']],
     ['delete', ['jWidthHeightReset', 'deleteTable']],
 ]
@@ -29,6 +29,7 @@ table: [
 ```javascript
         $(document).ready(function () {
             $('#summernote').summernote({
+                lang   : "ko-KR",
                 height : 300,
                 toolbar: [
                     ['style', ['style']],
@@ -41,10 +42,16 @@ table: [
                 popover: {
                     table: [
                         ['merge', ['jMerge']],
-                        ['style', ['jBackcolor', 'jBorderColor', 'jAddDeleteRowCol']],
+                        ['style', ['jBackcolor', 'jBorderColor', 'jAlign', 'jAddDeleteRowCol']],
                         ['info', ['jTableInfo']],
                         ['delete', ['jWidthHeightReset', 'deleteTable']],
                     ]
+                },
+                jTable : {
+                    /**
+                     * drag || dialog
+                     */
+                    mergeMode: 'drag'
                 }
             });
         });

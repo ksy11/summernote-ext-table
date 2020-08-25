@@ -15,7 +15,7 @@
     <script>
         $(document).ready(function () {
             $('#summernote').summernote({
-                lang : "ko-KR",
+                lang   : "ko-KR",
                 height : 300,
                 toolbar: [
                     ['style', ['style']],
@@ -28,10 +28,16 @@
                 popover: {
                     table: [
                         ['merge', ['jMerge']],
-                        ['style', ['jBackcolor', 'jBorderColor', 'jAddDeleteRowCol']],
+                        ['style', ['jBackcolor', 'jBorderColor', 'jAlign', 'jAddDeleteRowCol']],
                         ['info', ['jTableInfo']],
                         ['delete', ['jWidthHeightReset', 'deleteTable']],
                     ]
+                },
+                jTable : {
+                    /**
+                     * drag || dialog
+                     */
+                    mergeMode: 'drag'
                 }
             });
         });

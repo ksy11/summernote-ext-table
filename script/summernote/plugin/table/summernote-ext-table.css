@@ -124,6 +124,15 @@
     z-index: 1;
 }
 
+.jtable-block {
+    display: none;
+    position: absolute;
+    border: 1px dashed #bcbcbc;
+    background-color: rgba(167, 163, 255, 0.5);
+    z-index: 1;
+    pointer-events: none;
+}
+
 
 
 .form-group-jtable-table-info-margin {
